@@ -226,12 +226,14 @@ class OptimizedDialectASR:
         pulse_device = 'alsa_input.usb-Sonix_Technology_Co.__Ltd._USB_2.0_Camera-02.mono-fallback'
 
         # 启动采集线程
+        print("[debug] 启动采集线程...")
         capture_thread = threading.Thread(
             target=self._arecord_capture,
             args=(pulse_device,),
             daemon=True
         )
         capture_thread.start()
+        print("[debug] 采集线程已启动")
 
         try:
             while self.is_running:
