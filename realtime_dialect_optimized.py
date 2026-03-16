@@ -73,20 +73,20 @@ class OptimizedDialectASR:
             '--format', 's16le',
             '--latency-msec', '100',
         ]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
         self._arecord_proc = proc
         bytes_per_chunk = chunk_samples * 2
-        chunk_count = 0
+        buf = b''
         try:
             while self.is_running:
-                data = proc.stdout.read(bytes_per_chunk)
+                data = proc.stdout.read(bytes_per_chunk - len(buf))
                 if not data:
                     break
-                chunk = np.frombuffer(data, dtype=np.int16)
-                chunk_count += 1
-                if chunk_count <= 5 or chunk_count % 50 == 0:
-                    print(f"[debug] chunk#{chunk_count} len={len(chunk)} energy={np.abs(chunk).mean():.0f}")
-                self.audio_queue.put(chunk.copy())
+                buf += data
+                if len(buf) >= bytes_per_chunk:
+                    chunk = np.frombuffer(buf[:bytes_per_chunk], dtype=np.int16)
+                    self.audio_queue.put(chunk.copy())
+                    buf = buf[bytes_per_chunk:]
         finally:
             proc.terminate()
     
