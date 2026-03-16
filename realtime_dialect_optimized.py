@@ -73,18 +73,24 @@ class OptimizedDialectASR:
             '--format', 's16le',
             '--latency-msec', '100',
         ]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
         self._arecord_proc = proc
         bytes_per_chunk = chunk_samples * 2
         buf = b''
+        print(f"[debug] parec 启动，pid={proc.pid}")
         try:
             while self.is_running:
-                data = proc.stdout.read(bytes_per_chunk - len(buf))
+                data = proc.stdout.read(1)
                 if not data:
+                    err = proc.stderr.read()
+                    print(f"[debug] parec 退出，stderr: {err}")
                     break
                 buf += data
                 if len(buf) >= bytes_per_chunk:
                     chunk = np.frombuffer(buf[:bytes_per_chunk], dtype=np.int16)
+                    energy = np.abs(chunk).mean()
+                    if len(buf) == bytes_per_chunk:  # 第一次
+                        print(f"[debug] 收到数据，energy={energy:.0f}")
                     self.audio_queue.put(chunk.copy())
                     buf = buf[bytes_per_chunk:]
         finally:
